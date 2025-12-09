@@ -1,1 +1,14 @@
+import pandas as pd
+df = pd.read_csv("https://storage.googleapis.com/qm2/wk1/spotify-2023.csv")
 
+# Find index of most danceable song
+idx = df['danceability_%'].idxmax()
+
+# Extract info
+title = df.loc[idx, 'track_name']
+artist = df.loc[idx, 'artist(s)_name']
+streams = df.loc[idx, 'streams']
+
+print("Song:", title)
+print("Artist:", artist)
+print("Streams:", streams)
