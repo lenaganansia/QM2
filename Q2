@@ -1,0 +1,44 @@
+import pandas as pd
+import requests
+
+url = "https://en.wikipedia.org/wiki/List_of_countries_by_traffic-related_death_rate"
+headers = {"User-Agent": "Mozilla/5.0"}
+
+response = requests.get(url, headers=headers)
+response.raise_for_status()
+
+tables = pd.read_html(response.text)
+
+df = None
+for t in tables:
+    cols = [str(c) for c in t.columns]
+    has_continent = any("Continent" in c for c in cols)
+    has_per100k = any("Per 100,000" in c for c in cols)
+    has_date = any("Date" in c for c in cols)
+    if has_continent and has_per100k and has_date:
+        df = t
+        break
+
+if df is None:
+    raise ValueError("Could not find the expected table. Check tables[0], tables[1], ... manually.")
+
+rate_col = [c for c in df.columns if "Per 100,000" in str(c)][0]
+date_col = [c for c in df.columns if "Date" in str(c)][0]
+continent_col = [c for c in df.columns if "Continent" in str(c)][0]
+
+df = df.rename(columns={
+    rate_col: "per_100k",
+    date_col: "year",
+    continent_col: "continent"
+})
+df["per_100k"] = pd.to_numeric(df["per_100k"], errors="coerce")
+df["year"] = df["year"].astype(str).str.extract(r"(\d{4})")
+df["year"] = pd.to_numeric(df["year"], errors="coerce")
+
+
+asia_2019 = df[(df["continent"] == "Asia") & (df["year"] == 2019)]
+grouped = asia_2019.groupby(["continent", "year"])["per_100k"].mean()
+asia_2019_avg = grouped.loc[("Asia", 2019)]
+
+print("Average road fatalities per 100,000 inhabitants in Asia in 2019:",
+      asia_2019_avg)
